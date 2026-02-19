@@ -18,6 +18,7 @@ export class MatchesService {
     private allowedLeagues = [
         128, // Liga Argentina
         13,  // Libertadores
+        11,  // ✅ Copa Sudamericana
         39,  // Premier League
         2,   // Champions
         45,  // FA Cup
@@ -58,6 +59,7 @@ export class MatchesService {
             .format('HH:mm');
             
             return {
+                leagueId: f.league.id,
                 league: f.league.name,
                 leagueLogo: f.league.logo ?? null,
                 
