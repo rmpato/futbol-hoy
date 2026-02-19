@@ -14,7 +14,7 @@ export class MatchesService {
         @Inject(CACHE_MANAGER) private cacheManager: Cache,
         private config: ConfigService,
     ) { }
-
+    
     private allowedLeagues = [
         128, // Liga Argentina
         13,  // Libertadores
@@ -23,19 +23,19 @@ export class MatchesService {
         45,  // FA Cup
         48,  // Carabao Cup
     ];
-
+    
     async getTodayMatches() {
-
+        
         // ✅ check cache first
         const cached = await this.cacheManager.get('today_matches');
-
+        
         if (cached) {
             console.log('cached', cached);
             return cached;
         }
-
+        
         const today = dayjs().format('YYYY-MM-DD');
-
+        
         const response = await axios.get(
             'https://v3.football.api-sports.io/fixtures',
             {
@@ -46,24 +46,38 @@ export class MatchesService {
                 },
             },
         );
-
+        
         const fixtures = response.data.response;
-
+        
         const matches = fixtures
-            .filter(f => this.allowedLeagues.includes(f.league.id))
-            .map(f => {
-                const argentinaTime = dayjs(f.fixture.date)
-                    .utc()
-                    .utcOffset(-3)
-                    .format('HH:mm');
-
-                return {
-                    match: `${f.teams.home.name} vs ${f.teams.away.name}`,
-                    time: `${argentinaTime} hs ARG`,
-                    league: f.league.name,
-                };
-            });
-
+        .filter(f => this.allowedLeagues.includes(f.league.id))
+        .map(f => {
+            const argentinaTime = dayjs(f.fixture.date)
+            .utc()
+            .utcOffset(-3)
+            .format('HH:mm');
+            
+            return {
+                league: f.league.name,
+                leagueLogo: f.league.logo ?? null,
+                
+                homeTeam: f.teams.home.name,
+                homeLogo: f.teams.home.logo ?? null,
+                
+                awayTeam: f.teams.away.name,
+                awayLogo: f.teams.away.logo ?? null,
+                
+                time: `${argentinaTime} hs ARG`,
+                status: f.fixture.status.short,
+                
+                goals: {
+                    home: f.goals.home,
+                    away: f.goals.away,
+                },
+            };
+        });
+        
+        
         // ✅ cache for 5 minutes
         //await this.cacheManager.set('today_matches', matches, 300);
         await this.cacheManager.set(
@@ -71,9 +85,9 @@ export class MatchesService {
             matches,
             43_200_000 // 12 horas en ms
         );
-
+        
         console.log('matches fetched from API and cached');
-
+        
         return matches;
     }
 }
