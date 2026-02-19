@@ -69,7 +69,7 @@ export class MatchesService {
         await this.cacheManager.set(
             'today_matches',
             matches,
-            300_000 // 5 minutos en ms
+            43_200_000 // 12 horas en ms
         );
 
         console.log('matches fetched from API and cached');
