@@ -253,12 +253,19 @@ input {
 
 <h1>Partidos de hoy y mañana</h1>
 
-<p>Solo los partidos de Liga Argentina, Libertadores, Sudamericana, Premier League, Champions League, FA Cup y Carabao Cup.</p>
-<p>La informacion se actualiza aproximadamente cada 12 horas.</p>
-<p>Solo se muestran tabs de los torneos mencionados que tengan partidos a jugar hoy y mañana. Es decir que si un torneo no tiene partidos en esos días, no se muestra el tab correspondiente.</p>
+<p>
+Se muestran partidos de Liga Argentina, Libertadores, Sudamericana,
+Premier League, Champions League, FA Cup y Carabao Cup.
+</p>
 
-<p>También podés buscar por equipo usando este filtro:</p>
+<p>
+La información se actualiza aproximadamente cada 12 horas.
+Solo aparecen los torneos que tengan partidos programados para hoy o mañana.
+</p>
 
+<p>
+Podés buscar equipos usando el filtro de abajo.
+</p>
 <input id="search" placeholder="Filtrar por equipo..." />
 
 <div class="tabs">
