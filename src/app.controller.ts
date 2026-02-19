@@ -251,9 +251,15 @@ input {
 
 <body>
 
-<h1>Partidos hasta el Domingo</h1>
+<h1>Partidos de hoy y mañana</h1>
 
-<input id="search" placeholder="Buscar equipo..." />
+<p>Solo los partidos de Liga Argentina, Libertadores, Sudamericana, Premier League, Champions League, FA Cup y Carabao Cup.</p>
+<p>La informacion se actualiza aproximadamente cada 12 horas.</p>
+<p>Solo se muestran tabs de los torneos mencionados que tengan partidos a jugar hoy y mañana. Es decir que si un torneo no tiene partidos en esos días, no se muestra el tab correspondiente.</p>
+
+<p>También podés buscar por equipo usando este filtro:</p>
+
+<input id="search" placeholder="Filtrar por equipo..." />
 
 <div class="tabs">
 ${tabsButtons}
