@@ -10,86 +10,123 @@ dayjs.extend(utc);
 
 @Injectable()
 export class MatchesService {
-    constructor(
-        @Inject(CACHE_MANAGER) private cacheManager: Cache,
-        private config: ConfigService,
-    ) { }
-    
-    private allowedLeagues = [
-        128, // Liga Argentina
-        13,  // Libertadores
-        11,  // ✅ Copa Sudamericana
-        39,  // Premier League
-        2,   // Champions
-        45,  // FA Cup
-        48,  // Carabao Cup
-    ];
-    
-    async getTodayMatches() {
-        
-        // ✅ check cache first
-        const cached = await this.cacheManager.get('today_matches');
-        
-        if (cached) {
-            console.log('cached', cached);
-            return cached;
-        }
-        
-        const today = dayjs().format('YYYY-MM-DD');
-        
-        const response = await axios.get(
-            'https://v3.football.api-sports.io/fixtures',
-            {
-                params: { date: today },
-                headers: {
-                    'X-RapidAPI-Key': this.config.get<string>('API_KEY'),
-                    'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com',
-                },
-            },
-        );
-        
-        const fixtures = response.data.response;
-        
-        const matches = fixtures
-        .filter(f => this.allowedLeagues.includes(f.league.id))
-        .map(f => {
-            const argentinaTime = dayjs(f.fixture.date)
-            .utc()
-            .utcOffset(-3)
-            .format('HH:mm');
-            
-            return {
-                leagueId: f.league.id,
-                league: f.league.name,
-                leagueLogo: f.league.logo ?? null,
-                
-                homeTeam: f.teams.home.name,
-                homeLogo: f.teams.home.logo ?? null,
-                
-                awayTeam: f.teams.away.name,
-                awayLogo: f.teams.away.logo ?? null,
-                
-                time: `${argentinaTime} hs ARG`,
-                status: f.fixture.status.short,
-                
-                goals: {
-                    home: f.goals.home,
-                    away: f.goals.away,
-                },
-            };
-        });
-        
-        
-        // ✅ cache for 5 minutes
-        //await this.cacheManager.set('today_matches', matches, 300);
-        await this.cacheManager.set(
-            'today_matches',
-            matches,
-            43_200_000 // 12 horas en ms
-        );
-        
-        console.log('matches fetched from API and cached');
-        
-        return matches;
+  constructor(
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private config: ConfigService,
+  ) {}
+
+  private allowedLeagues = [
+    128, // Liga Argentina
+    13,  // Libertadores
+    11,  // Sudamericana
+    39,  // Premier
+    2,   // Champions
+    45,  // FA Cup
+    48,  // Carabao Cup
+  ];
+
+  // ✅ etiquetas de día
+  private getDayLabel(date: dayjs.Dayjs) {
+    const today = dayjs().startOf('day');
+    const diff = date.startOf('day').diff(today, 'day');
+
+    if (diff === 0) return 'Hoy';
+    if (diff === 1) return 'Mañana';
+
+    return date.locale('es').format('dddd');
+  }
+
+  // ✅ SOLO HOY Y MAÑANA (plan free safe)
+  private getAllowedDates(): string[] {
+    const today = dayjs().startOf('day');
+
+    return [
+      today,
+      today.add(1, 'day'),
+    ].map(d => d.format('YYYY-MM-DD'));
+  }
+
+  // ✅ llamada API protegida
+  private async fetchFixturesByDate(date: string) {
+    try {
+      console.log('Fetching fixtures:', date);
+
+      const response = await axios.get(
+        'https://v3.football.api-sports.io/fixtures',
+        {
+          params: { date },
+          headers: {
+            'X-RapidAPI-Key': this.config.get<string>('API_KEY'),
+            'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com',
+          },
+        },
+      );
+
+      return response.data.response ?? [];
+    } catch (err) {
+      // 🔥 evita crash por limitación del plan free
+      console.log('Date not allowed on free plan:', date);
+      return [];
     }
+  }
+
+  async getTodayMatches() {
+    // ✅ CACHE GLOBAL
+    const cached = await this.cacheManager.get('today_tomorrow_matches');
+
+    if (cached) {
+      console.log('using cached matches');
+      return cached;
+    }
+
+    const dates = this.getAllowedDates();
+
+    // ✅ llamadas paralelas
+    const results = await Promise.all(
+      dates.map(date => this.fetchFixturesByDate(date)),
+    );
+
+    const fixtures = results.flat();
+
+    const matches = fixtures
+      .filter(f => this.allowedLeagues.includes(f.league.id))
+      .map(f => {
+        const matchDate = dayjs(f.fixture.date)
+          .utc()
+          .utcOffset(-3);
+
+        return {
+          leagueId: f.league.id,
+          league: f.league.name,
+          leagueLogo: f.league.logo ?? null,
+
+          homeTeam: f.teams.home.name,
+          homeLogo: f.teams.home.logo ?? null,
+
+          awayTeam: f.teams.away.name,
+          awayLogo: f.teams.away.logo ?? null,
+
+          time: matchDate.format('HH:mm') + ' hs ARG',
+          dayLabel: this.getDayLabel(matchDate),
+
+          status: f.fixture.status.short,
+
+          goals: {
+            home: f.goals.home,
+            away: f.goals.away,
+          },
+        };
+      });
+
+    // ✅ cache 12h
+    await this.cacheManager.set(
+      'today_tomorrow_matches',
+      matches,
+      43_200_000,
+    );
+
+    console.log('matches fetched & cached');
+
+    return matches;
+  }
 }
